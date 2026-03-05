@@ -2,6 +2,7 @@ import utils.imu_yostlabs_lara as imu_yostlabs_lara
 import utils.quaternion_operations as quaternion_operations
 import time
 import keyboard
+from math import pi
 from stim_node import StimNode
 
 
@@ -75,8 +76,8 @@ def main():
     imu_yostlabs_lara.configure_imu(serial_port, imus)
 
     current_quaternion1 = None
-    x = 0
-    angulo_minimo = 60
+    x = float()
+    y = float()
 
     # start streaming
     input("Press Enter to start streaming")
@@ -94,7 +95,17 @@ def main():
         if current_quaternion1 is not None:            
             euler_angle = quaternion_operations.euler_from_quaternion(current_quaternion1)
             
-            x = abs(euler_angle[0])
+            x = euler_angle[0]
+            y = euler_angle[1]
+
+            if y >= 0:
+                if abs(x) > (pi*0.5):
+                    y = 180-y
+            else:
+                if abs(x) > (pi*0.5):
+                    y = 180-y
+                else:
+                    y = 360+y
             
             #print(euler_angle)
 
@@ -103,7 +114,7 @@ def main():
         match state:
 
             case "waiting":     # estado de espera, aperta espaço que entra no programad da estimulação
-                if x > angulo_minimo:
+                if y > 270 or y < 20:
                     state = STATE_STIM_ON
                     stim.update_ccl(PULSE_WIDTH_ON, PULSE_CURRENT_ON)
                     print("[STIM ON]  Estimulacao iniciada.")
@@ -112,7 +123,7 @@ def main():
             case "stim_on":     # estado de estimulação, quando entra no programa de estimulação
                 stim.update_ccl(PULSE_WIDTH_ON, PULSE_CURRENT_ON)
 
-                if keyboard.is_pressed("p") or x < angulo_minimo:    #condição de "pausa"
+                if keyboard.is_pressed("p") or (y < 270 or y > 20):    #condição de "pausa"
                     state = STATE_STIM_OFF
                     stim.update_ccl(PULSE_WIDTH_OFF, PULSE_CURRENT_OFF)
                     print("[PAUSADO]  Valores zerados. Pressione L para retomar.")
@@ -124,7 +135,7 @@ def main():
             case "stim_off":        #condição de pausa
                 stim.update_ccl(PULSE_WIDTH_OFF, PULSE_CURRENT_OFF)
 
-                if keyboard.is_pressed("l") or x > angulo_minimo:    # condição de estimulação
+                if keyboard.is_pressed("l") or (y > 270 or y < 20):    # condição de estimulação
                     state = STATE_STIM_ON
                     stim.update_ccl(PULSE_WIDTH_ON, PULSE_CURRENT_ON)
                     print("[STIM ON]  Estimulacao retomada.")
